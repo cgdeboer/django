@@ -14,6 +14,7 @@ from django.db import DEFAULT_DB_ALIAS, connections, router
 from django.db.migrations.autodetector import MigrationAutodetector
 from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.loader import AmbiguityError
+from django.db.migrations.operations.utils import verbose_describe
 from django.db.migrations.state import ModelState, ProjectState
 from django.utils.module_loading import module_has_submodule
 
@@ -53,6 +54,10 @@ class Command(BaseCommand):
         parser.add_argument(
             '--run-syncdb', action='store_true', dest='run_syncdb',
             help='Creates tables for apps without migrations.',
+        )
+        parser.add_argument(
+            '--plan', action='store_true', dest='plan',
+            help='Shows a list of ordered migration actions that Django will perform.',
         )
 
     def _run_checks(self, **kwargs):
@@ -133,8 +138,19 @@ class Command(BaseCommand):
             targets = executor.loader.graph.leaf_nodes()
 
         plan = executor.migration_plan(targets)
-        run_syncdb = options['run_syncdb'] and executor.loader.unmigrated_apps
 
+        if options['plan']:
+            self.stdout.write(self.style.MIGRATE_LABEL("Planned operations:"))
+            for migration, backwards in plan:
+                self.stdout.write(self.style.MIGRATE_HEADING(str(migration)))
+                for operation in migration.operations:
+                    message, has_error = verbose_describe(operation, backwards)
+                    if has_error:
+                        message = self.style.WARNING(message)
+                    self.stdout.write("    {}".format(message))
+            return
+
+        run_syncdb = options['run_syncdb'] and executor.loader.unmigrated_apps
         # Print some useful info
         if self.verbosity >= 1:
             self.stdout.write(self.style.MIGRATE_HEADING("Operations to perform:"))
