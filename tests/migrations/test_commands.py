@@ -268,6 +268,16 @@ class MigrateTests(MigrationTestBase):
         # Cleanup by unmigrating everything
         call_command("migrate", "migrations", "zero", verbosity=0)
 
+    @override_settings(MIGRATION_MODULES={"migrations": "migrations.test_migrations_plan"})
+    def test_migrate_plan(self):
+        """
+        Tests --plan output of migrate command
+        """
+        call_command("migrate", plan=True)
+        call_command("migrate", "migrations")
+        call_command("migrate", "migrations", "0001", plan=True)
+        raise NotImplemented("TBF")
+
     @override_settings(MIGRATION_MODULES={"migrations": "migrations.test_migrations_empty"})
     def test_showmigrations_plan_no_migrations(self):
         """
